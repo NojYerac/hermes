@@ -1,5 +1,10 @@
+# Build-time version pins — override with --build-arg as needed.
+ARG GO_VERSION=1.24
+ARG GINKGO_VERSION=latest
+ARG GOLANGCI_LINT_VERSION=latest
+
 # ─── Stage 1: build hermes-bridge ────────────────────────────────────────────
-FROM golang:1.24-alpine AS builder
+FROM golang:${GO_VERSION}-alpine AS builder
 
 RUN apk add --no-cache build-base git
 
@@ -14,17 +19,26 @@ COPY . .
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /hermes-bridge ./cmd/hermes-bridge
 
 # ─── Stage 2: runtime image ──────────────────────────────────────────────────
-FROM golang:1.24-alpine
+# Re-declare ARGs so they are in scope for this stage.
+ARG GO_VERSION
+ARG GINKGO_VERSION
+ARG GOLANGCI_LINT_VERSION
+
+FROM golang:${GO_VERSION}-alpine
+
+# Propagate build args into the stage environment for use in RUN commands.
+ARG GINKGO_VERSION
+ARG GOLANGCI_LINT_VERSION
 
 # System deps required for module fetching and CGO-optional builds.
 RUN apk add --no-cache build-base git openssh ca-certificates curl
 
 # Ginkgo BDD test runner.
-RUN go install github.com/onsi/ginkgo/v2/ginkgo@latest
+RUN go install github.com/onsi/ginkgo/v2/ginkgo@${GINKGO_VERSION}
 
 # GolangCI-Lint via the official binary distribution script.
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
-    | sh -s -- -b /go/bin latest
+    | sh -s -- -b /go/bin ${GOLANGCI_LINT_VERSION}
 
 # Copy the compiled bridge binary from the builder stage.
 COPY --from=builder /hermes-bridge /go/bin/hermes-bridge
