@@ -2,6 +2,9 @@
 ARG GO_VERSION=1.24
 ARG GINKGO_VERSION=latest
 ARG GOLANGCI_LINT_VERSION=latest
+ARG PROTOC_GEN_GO_VERSION=latest
+ARG PROTOC_GEN_GO_GRPC_VERSION=latest
+ARG MOCKERY_VERSION=latest
 
 # ─── Stage 1: build hermes-bridge ────────────────────────────────────────────
 FROM golang:${GO_VERSION}-alpine AS builder
@@ -23,15 +26,22 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /hermes-bridge ./cmd/hermes-bridg
 ARG GO_VERSION
 ARG GINKGO_VERSION
 ARG GOLANGCI_LINT_VERSION
+ARG PROTOC_GEN_GO_VERSION
+ARG PROTOC_GEN_GO_GRPC_VERSION
+ARG MOCKERY_VERSION
 
 FROM golang:${GO_VERSION}-alpine
 
 # Propagate build args into the stage environment for use in RUN commands.
 ARG GINKGO_VERSION
 ARG GOLANGCI_LINT_VERSION
+ARG PROTOC_GEN_GO_VERSION
+ARG PROTOC_GEN_GO_GRPC_VERSION
+ARG MOCKERY_VERSION
 
 # System deps required for module fetching and CGO-optional builds.
-RUN apk add --no-cache build-base git openssh ca-certificates curl
+# protobuf-dev provides the protoc compiler and well-known proto includes.
+RUN apk add --no-cache build-base git openssh ca-certificates curl protobuf protobuf-dev
 
 # Ginkgo BDD test runner.
 RUN go install github.com/onsi/ginkgo/v2/ginkgo@${GINKGO_VERSION}
@@ -39,6 +49,13 @@ RUN go install github.com/onsi/ginkgo/v2/ginkgo@${GINKGO_VERSION}
 # GolangCI-Lint via the official binary distribution script.
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
     | sh -s -- -b /go/bin ${GOLANGCI_LINT_VERSION}
+
+# Protobuf / gRPC code-generation plugins.
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOC_GEN_GO_VERSION} \
+    && go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${PROTOC_GEN_GO_GRPC_VERSION}
+
+# Mock generation.
+RUN go install github.com/vektra/mockery/v2@${MOCKERY_VERSION}
 
 # Copy the compiled bridge binary from the builder stage.
 COPY --from=builder /hermes-bridge /go/bin/hermes-bridge
