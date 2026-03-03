@@ -43,6 +43,14 @@ RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/i
 # Copy the compiled bridge binary from the builder stage.
 COPY --from=builder /hermes-bridge /go/bin/hermes-bridge
 
+# Create a non-root user and pre-create the Go cache directories so they are
+# owned by that user before the volume mounts are applied at runtime.
+RUN addgroup -S hermes && adduser -S -G hermes hermes \
+    && mkdir -p /go/pkg/mod /.cache/go-build \
+    && chown -R hermes:hermes /go/pkg/mod /.cache/go-build
+
+USER hermes
+
 # Bind address can be overridden at runtime; defaults to 127.0.0.1:3010.
 ENV HERMES_ADDR=127.0.0.1:3010
 # Comma-separated list of executable names the bridge may run.
