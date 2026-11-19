@@ -1,5 +1,5 @@
 # Build-time version pins — override with --build-arg as needed.
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.27.4
 ARG GINKGO_VERSION=latest
 ARG GOLANGCI_LINT_VERSION=latest
 ARG PROTOC_GEN_GO_VERSION=latest

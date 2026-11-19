@@ -102,6 +102,10 @@ func stream(ctx context.Context, w io.Writer, flusher http.Flusher, req ExecuteR
 			_, _ = fmt.Fprintf(w, "%s\n", scanner.Text())
 			flusher.Flush()
 		}
+		if err := scanner.Err(); err != nil {
+			_, _ = fmt.Fprintf(w, "error reading output: %s\n", err)
+			flusher.Flush()
+		}
 	}
 
 	go copyLines(stdout)
