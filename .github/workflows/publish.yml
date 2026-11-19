@@ -44,7 +44,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            GO_VERSION=${{ vars.GO_VERSION || '1.24' }}
+            GO_VERSION=${{ vars.GO_VERSION || '1.27.4' }}
             GINKGO_VERSION=${{ vars.GINKGO_VERSION || 'latest' }}
             GOLANGCI_LINT_VERSION=${{ vars.GOLANGCI_LINT_VERSION || 'latest' }}
           cache-from: type=gha
