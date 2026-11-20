@@ -30,15 +30,6 @@ ARG PROTOC_GEN_GO_VERSION
 ARG PROTOC_GEN_GO_GRPC_VERSION
 ARG MOCKERY_VERSION
 
-FROM golang:${GO_VERSION}-alpine
-
-# Propagate build args into the stage environment for use in RUN commands.
-ARG GINKGO_VERSION
-ARG GOLANGCI_LINT_VERSION
-ARG PROTOC_GEN_GO_VERSION
-ARG PROTOC_GEN_GO_GRPC_VERSION
-ARG MOCKERY_VERSION
-
 # System deps required for module fetching and CGO-optional builds.
 # protobuf-dev provides the protoc compiler and well-known proto includes.
 RUN apk add --no-cache build-base git openssh ca-certificates curl protobuf protobuf-dev
@@ -47,7 +38,7 @@ RUN apk add --no-cache build-base git openssh ca-certificates curl protobuf prot
 RUN go install github.com/onsi/ginkgo/v2/ginkgo@${GINKGO_VERSION}
 
 # GolangCI-Lint via the official binary distribution script.
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
+RUN curl -sSfL https://golangci-lint.run/install.sh \
     | sh -s -- -b /go/bin ${GOLANGCI_LINT_VERSION}
 
 # Protobuf / gRPC code-generation plugins.
@@ -57,14 +48,31 @@ RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOC_GEN_GO_VERS
 # Mock generation.
 RUN go install github.com/vektra/mockery/v2@${MOCKERY_VERSION}
 
+FROM golang:${GO_VERSION}-alpine
+
+# Propagate build args into the stage environment for use in RUN commands.
+ARG GINKGO_VERSION
+ARG GOLANGCI_LINT_VERSION
+ARG PROTOC_GEN_GO_VERSION
+ARG PROTOC_GEN_GO_GRPC_VERSION
+ARG MOCKERY_VERSION
+
 # Copy the compiled bridge binary from the builder stage.
 COPY --from=builder /hermes-bridge /go/bin/hermes-bridge
+# Copy the installed tools from the builder stage.
+COPY --from=builder \
+    /go/bin/ginkgo \
+    /go/bin/golangci-lint \
+    /go/bin/protoc-gen-go \
+    /go/bin/protoc-gen-go-grpc \
+    /go/bin/mockery \
+    /go/bin/
 
 # Create a non-root user and pre-create the Go cache directories so they are
 # owned by that user before the volume mounts are applied at runtime.
 RUN addgroup -g 1000 -S hermes && adduser -u 1000 -S -G hermes hermes \
-    && mkdir -p /go/pkg/mod /.cache/go-build \
-    && chown -R hermes:hermes /go/pkg/mod /.cache/go-build
+    && mkdir -p /go/pkg /.cache/go-build \
+    && chown -R hermes:hermes /go/pkg /.cache/go-build
 
 USER hermes
 
